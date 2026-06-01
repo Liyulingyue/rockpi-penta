@@ -96,20 +96,20 @@ def read_conf():
 
 def read_key(pattern, size):
     CHIP_NAME = os.environ['BUTTON_CHIP']
-    LINE_NUMBER = os.environ['BUTTON_LINE']
-
+    LINE_NUMBER = int(os.environ['BUTTON_LINE'])
+    chip_path = f"/dev/gpiochip{CHIP_NAME}"
     s = ''
-    chip = gpiod.Chip(str(CHIP_NAME))
-    line = chip.get_line(int(LINE_NUMBER))
-    line.request(consumer='hat_button', type=gpiod.LINE_REQ_DIR_OUT)
-    line.set_value(1)
-
-    while True:
-        s = s[-size:] + str(line.get_value())
-        for t, p in pattern.items():
-            if p.match(s):
-                return t
-        time.sleep(0.1)
+    with gpiod.request_lines(
+        chip_path,
+        consumer='hat_button',
+        config={LINE_NUMBER: gpiod.LineSettings(direction=gpiod.line.Direction.INPUT)}
+    ) as request:
+        while True:
+            s = s[-size:] + str(request.get_value(LINE_NUMBER).value)
+            for t, p in pattern.items():
+                if p.match(s):
+                    return t
+            time.sleep(0.1)
 
 
 def watch_key(q=None):
